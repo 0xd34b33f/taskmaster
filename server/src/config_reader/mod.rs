@@ -20,7 +20,7 @@ pub struct Task<'i> {
 pub struct TaskList<'i>(Vec<Task<'i>>);
 
 impl<'i> TaskList<'i> {
-	pub fn read_config(&mut self, config_path: &Path)
+	pub fn read_config(&mut self, config_path: &Path) -> Result<(), Box<std::error::Error>>
 	{
 		let mut file = File::open(config_path);
 		let file = match file {
@@ -30,14 +30,7 @@ impl<'i> TaskList<'i> {
 				std::process::exit(1);
 			}
 		};
-		let parse_res = from_reader(file);
-		let parse_res:String = match parse_res {
-			Ok(r) => parse_res,
-			Err(e) => {
-				eprintln!("Error parsing {}", config_path.display());
-				std::process::exit(1);
-			}
-		};
+		let d: String = serde_yaml::from_reader(f)?;
 	}
 }
 
