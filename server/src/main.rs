@@ -1,4 +1,4 @@
 pub mod config_reader;
 fn main() {
-	println!("Hello, world!");
+    config_reader::task_list_check();
 }
