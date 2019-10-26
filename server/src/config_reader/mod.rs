@@ -6,7 +6,6 @@ use std::path::Path;
 extern crate yaml_rust;
 
 use yaml_rust::{Yaml, YamlEmitter, YamlLoader};
-use std::io::_eprint;
 
 pub struct Task<'i> {
 	program_name: String,
@@ -26,16 +25,18 @@ pub struct TaskList<'i>(Vec<Task<'i>>);
 
 impl<'i> TaskList<'i> {}
 
+pub fn get_working_dir_from_cmd(cmd: &String)
+{
+	let mut path =  cmd.split(" ");
+
+}
+
 pub fn create_yaml_structs<'i>(k: &Yaml, v: &Yaml) -> Option<Task<'i>> {
-	//	println!("KEY: {:#?} VALUE:{:#?}\n###################################################\n", k, v);
-	//	let current_task = Task{
-	//		program_name =
-	//	};
 	let prog_name = match k.as_str() {
 		Some(a) => a,
 		None => {
 			eprintln!("Invalid programm name {:#?}", k);
-			std::process::exit(1);
+			return None;
 		}
 	};
 	let programm_params = match v.as_hash() {
@@ -58,6 +59,7 @@ pub fn create_yaml_structs<'i>(k: &Yaml, v: &Yaml) -> Option<Task<'i>> {
 			return None;
 		}
 	};
+	
 	let numprocs = match programm_params.get(&Yaml::String(String::from("numprocs"))) {
 		Some(a) => match a.as_i64() {
 			Some(b) => b as u16,
@@ -84,28 +86,28 @@ pub fn create_yaml_structs<'i>(k: &Yaml, v: &Yaml) -> Option<Task<'i>> {
 			0
 		}
 	};
-	let working_dir = match programm_params.get(&Yaml::String(String::from("working_dir"))) {
-		Some(a)=>match a.as_str() {
-			Some(b)=> Path::new(b),
-			None=>{
-				eprintln!("Error parsing path for {}. Working_dir: {:?}", prog_name,a);
+	let working_dir = match programm_params.get(&Yaml::String(String::from("workingdir"))) {
+		Some(a) => match a.as_str() {
+			Some(b) => Path::new(b),
+			None => {
+				eprintln!("Error parsing path for {}. Working_dir: {:?}", prog_name, a);
 				return None;
 			}
 		},
-		None=>{
+		None => {
 			eprintln!("Error parsing working dir for {}. Setting default.", prog_name);
-			return None;
+			Path::new("/")
 		}
 	};
 	println!(
-		"PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} PATH: {}",
-		prog_name, cmd, numprocs, umask,working_dir
+		"PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} WORKING_DIR: {}",
+		prog_name, cmd, numprocs, umask, working_dir.display()
 	);
 	None
 }
 
 pub fn read_config(config_path: &Path) {
-	let  file = File::open(config_path);
+	let file = File::open(config_path);
 	let mut file = match file {
 		Ok(f) => f,
 		Err(_) => {
@@ -118,14 +120,14 @@ pub fn read_config(config_path: &Path) {
 	let d = YamlLoader::load_from_str(&file_data).expect("empty file");
 	let document = &d[0].as_hash().expect("Unwrap of YAML failed");
 	let root_element = document.get(&Yaml::String(String::from("programs")));
-	let  root_element = match root_element {
+	let root_element = match root_element {
 		Some(a) => a,
 		None => {
 			eprintln!("Root element not found.");
 			std::process::exit(1);
 		}
 	};
-	let  root_map = root_element.as_hash().unwrap();
+	let root_map = root_element.as_hash().unwrap();
 	for (k, v) in root_map {
 		create_yaml_structs(k, v);
 	}
