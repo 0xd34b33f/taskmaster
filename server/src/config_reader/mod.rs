@@ -5,6 +5,8 @@ use std::path::Path;
 
 extern crate yaml_rust;
 
+use std::collections::HashMap;
+use std::hash::Hash;
 use yaml_rust::{Yaml, YamlEmitter, YamlLoader};
 
 pub struct Task<'i> {
@@ -24,6 +26,7 @@ pub struct Task<'i> {
 pub struct TaskList<'i>(Vec<Task<'i>>);
 
 impl<'i> TaskList<'i> {}
+pub fn get_int_val_by_key(root: &HashMap<Yaml::String, Yaml::Hash>) {}
 
 pub fn get_working_dir_from_cmd(cmd: &str) -> &Path {
     match cmd.split_whitespace().next() {
@@ -116,14 +119,70 @@ pub fn create_yaml_structs<'i>(k: &Yaml, v: &Yaml) -> Option<Task<'i>> {
             false
         }
     };
-
+    let autorestart = match programm_params.get(&Yaml::String(String::from("autorestart"))) {
+        Some(a) => match a.as_str() {
+            Some(b) => match b.to_lowercase().as_str() {
+                "unexpected" => false,
+                "expected" => true,
+                _ => {
+                    eprintln!(
+                        "Failed parsing autorestart for {}. Autorestart: {:#?}",
+                        prog_name, b
+                    );
+                    false
+                }
+            },
+            None => {
+                eprintln!(
+                    "Failed parsing autorestart for {}. Autorestart: {:#?}",
+                    prog_name, a
+                );
+                false
+            }
+        },
+        None => {
+            eprintln!("Autorestart field for {} is not found.", prog_name);
+            false
+        }
+    };
+    let mut exitcodes = match programm_params.get(&Yaml::String(String::from("exitcodes"))) {
+        Some(a) => match a.as_vec() {
+            None => {
+                eprintln!(
+                    "Failed parsing exitcodes for {}. Exitcodes: {:#?}",
+                    prog_name, a
+                );
+                vec![0]
+            }
+            Some(b) => {
+                let mut resulting_vector = Vec::<u32>::with_capacity(2);
+                for code in b.iter() {
+                    resulting_vector.push(match code.as_i64() {
+                        Some(c) => c as u32,
+                        None => 0,
+                    });
+                }
+                resulting_vector
+            }
+        },
+        None => {
+            eprintln!("Exitcodes for {} not found. Setting default.", prog_name);
+            vec![0]
+        }
+    };
+    exitcodes.sort();
+    exitcodes.dedup();
     println!(
-        "PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} WORKING_DIR: {}",
+        "PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} WORKING_DIR: {}\n\
+         AUTOSTART: {}, AUTORESTART: {}, EXITCODES: {:?}",
         prog_name,
         cmd,
         numprocs,
         umask,
-        working_dir.display()
+        working_dir.display(),
+        autostart,
+        autorestart,
+        exitcodes
     );
     None
 }
