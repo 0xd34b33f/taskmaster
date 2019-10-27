@@ -1,13 +1,11 @@
+use linked_hash_map::LinkedHashMap;
 use signal::Signal;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-
 extern crate yaml_rust;
 
-use std::collections::HashMap;
-use std::hash::Hash;
-use yaml_rust::{Yaml, YamlEmitter, YamlLoader};
+use yaml_rust::{Yaml, YamlLoader};
 
 pub struct Task<'i> {
     program_name: String,
@@ -26,7 +24,11 @@ pub struct Task<'i> {
 pub struct TaskList<'i>(Vec<Task<'i>>);
 
 impl<'i> TaskList<'i> {}
-pub fn get_int_val_by_key(root: &HashMap<Yaml::String, Yaml::Hash>) {}
+pub fn get_int_val_by_key(root: &linked_hash_map::LinkedHashMap<Yaml, Yaml>, key_to_find: &str, key_type: Yaml) {
+    let found =match root.get(&Yaml::String(String::from(key_to_find)))   {
+        Some(a)=>
+    };
+}
 
 pub fn get_working_dir_from_cmd(cmd: &str) -> &Path {
     match cmd.split_whitespace().next() {
@@ -63,7 +65,6 @@ pub fn create_yaml_structs<'i>(k: &Yaml, v: &Yaml) -> Option<Task<'i>> {
             return None;
         }
     };
-
     let numprocs = match programm_params.get(&Yaml::String(String::from("numprocs"))) {
         Some(a) => match a.as_i64() {
             Some(b) => b as u16,
@@ -170,6 +171,7 @@ pub fn create_yaml_structs<'i>(k: &Yaml, v: &Yaml) -> Option<Task<'i>> {
             vec![0]
         }
     };
+    println!("{:#?}", programm_params);
     exitcodes.sort();
     exitcodes.dedup();
     println!(
