@@ -3,6 +3,7 @@ use signal::Signal;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+
 extern crate yaml_rust;
 
 use yaml_rust::{Yaml, YamlLoader};
@@ -22,13 +23,53 @@ pub struct Task<'i> {
 }
 
 pub struct TaskList<'i>(Vec<Task<'i>>);
-
+struct ReturnTypesForGetValByKey {}
 impl<'i> TaskList<'i> {}
-pub fn get_int_val_by_key(root: &linked_hash_map::LinkedHashMap<Yaml, Yaml>, key_to_find: &str, key_type: Yaml) {
-    let found =match root.get(&Yaml::String(String::from(key_to_find)))   {
-        Some(a)=>
-    };
+
+enum YamlTypes {
+    String,
+    Hash,
+    Array,
+    Integer,
+    Real,
 }
+trait GetValByKey {
+    fn get_val_by_key(&self) -> Option<Self>
+    where
+        Self: Sized;
+}
+impl GetValByKey for &str {
+    fn get_val_by_key(&self) -> Option<&str> {
+        return "lol";
+    }
+}
+//fn get_val_by_key<'a, T>(
+//    root: &'a linked_hash_map::LinkedHashMap<Yaml, Yaml>,
+//    key_to_find: &str,
+//    key_type: YamlTypes,
+//    prog_name: &str,
+//) -> Option<T> {
+//    let found = match root.get(&Yaml::String(String::from(key_to_find))) {
+//        Some(a) => match T {
+//            YamlTypes::String => match root.get(&Yaml::String(String::from(key_to_find))) {
+//                Some(a) => {
+//                    return a.as_str();
+//                }
+//                None => {
+//                    eprintln!(
+//                        "Error parsing {} for {}. Field is not found.",
+//                        key_to_find, prog_name
+//                    );
+//                }
+//            },
+//            YamlTypes::Hash => {}
+//            YamlTypes::Array => {}
+//            YamlTypes::Integer => {}
+//            YamlTypes::Real => {}
+//        },
+//        None => {}
+//    };
+//}
 
 pub fn get_working_dir_from_cmd(cmd: &str) -> &Path {
     match cmd.split_whitespace().next() {
