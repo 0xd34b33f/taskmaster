@@ -23,7 +23,9 @@ pub struct Task<'i> {
 }
 
 pub struct TaskList<'i>(Vec<Task<'i>>);
+
 struct ReturnTypesForGetValByKey {}
+
 impl<'i> TaskList<'i> {}
 
 enum YamlTypes {
@@ -33,14 +35,16 @@ enum YamlTypes {
     Integer,
     Real,
 }
+
 trait GetValByKey {
-    fn get_val_by_key(&self) -> Option<Self>
+    fn get_val_by_key<'a>(&self, root: linked_hash_map::LinkedHashMap<Yaml, Yaml>) -> Option<Self>
     where
         Self: Sized;
 }
+
 impl GetValByKey for &str {
-    fn get_val_by_key(&self) -> Option<&str> {
-        return "lol";
+    fn get_val_by_key<'a>(&self, root: linked_hash_map::LinkedHashMap<Yaml, Yaml>) -> Option<&str> {
+        None
     }
 }
 //fn get_val_by_key<'a, T>(
