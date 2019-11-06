@@ -1,4 +1,3 @@
-use linked_hash_map::LinkedHashMap;
 use signal::Signal;
 use std::convert::TryFrom;
 use std::fs::File;
@@ -7,27 +6,28 @@ use std::path::{Path, PathBuf};
 
 extern crate yaml_rust;
 
-use std::borrow::Borrow;
 use std::str::FromStr;
 use yaml_rust::{Yaml, YamlLoader};
 
+#[derive(Debug)]
 pub struct Task {
     program_name: String,
-    program_path: PathBuf,
+    program_path: String,
     numprocs: u16,
     umask: u16,
     woking_dir: PathBuf,
     autostart: bool,
     autorestart: bool,
     exitcodes: Vec<u8>,
-    startretries: u16,
-    starttime: u16,
+    startretries: u32,
+    starttime: u32,
+    stoptime: u32,
+    stdout: Option<PathBuf>,
+    stderr: Option<PathBuf>,
     stopsignal: Signal,
 }
 
 pub struct TaskList(Vec<Task>);
-
-struct ReturnTypesForGetValByKey {}
 
 impl TaskList {}
 
@@ -353,10 +353,17 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
     };
     let stdout = PathBuf::get_val_by_key(programm_params, "stdout", prog_name);
     let stderr = PathBuf::get_val_by_key(programm_params, "stderr", prog_name);
+    let mut sign;
     let stopsignal = match Signal::from_str(
         match String::get_val_by_key(programm_params, "stopsignal", prog_name) {
-            Some(a) => a.borrow(),
-            None => "KILL",
+            Some(ref a) => {
+                sign = a.to_uppercase();
+                if !sign.contains("SIG") {
+                    sign.insert_str(0, "SIG");
+                }
+                sign.as_str()
+            }
+            None => "",
         },
     ) {
         Ok(b) => b,
@@ -365,23 +372,40 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
             Signal::SIGKILL
         }
     };
-    println!(
-        "PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} WORKING_DIR: {}\n\
-         AUTOSTART: {}, AUTORESTART: {}, EXITCODES: {:?}\n\
-         START_RETRIES: {}, STARTTIME: {}, STOPTIME: {}",
-        prog_name,
-        cmd,
-        numprocs,
-        umask,
-        working_dir.display(),
-        autostart,
-        autorestart,
-        exitcodes,
-        start_retries,
-        start_time,
-        stop_time
-    );
-    None
+    //    println!(
+    //        "PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} WORKING_DIR: {}\n\
+    //         AUTOSTART: {}, AUTORESTART: {}, EXITCODES: {:?}\n\
+    //         START_RETRIES: {}, STARTTIME: {}, STOPTIME: {}\n\
+    //         SIGNAL: {:#?}",
+    //        prog_name,
+    //        cmd,
+    //        numprocs,
+    //        umask,
+    //        working_dir.display(),
+    //        autostart,
+    //        autorestart,
+    //        exitcodes,
+    //        start_retries,
+    //        start_time,
+    //        stop_time,
+    //        stopsignal
+    //    );
+    Some(Task {
+        program_name: String::from_str(prog_name).unwrap(),
+        program_path: cmd,
+        woking_dir: working_dir,
+        numprocs: numprocs,
+        umask: umask,
+        autostart: autostart,
+        autorestart: autorestart,
+        exitcodes: exitcodes,
+        startretries: start_retries,
+        starttime: start_time,
+        stopsignal: stopsignal,
+        stoptime: stop_time,
+        stdout: stdout,
+        stderr: stderr,
+    })
 }
 
 pub fn read_config(config_path: &Path) {
@@ -407,7 +431,7 @@ pub fn read_config(config_path: &Path) {
     };
     let root_map = root_element.as_hash().unwrap();
     for (k, v) in root_map {
-        create_yaml_structs(k, v);
+        println!("{:#?}", create_yaml_structs(k, v));
     }
 }
 
