@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 extern crate yaml_rust;
 
 use std::borrow::Borrow;
+use std::str::FromStr;
 use yaml_rust::{Yaml, YamlLoader};
 
 pub struct Task {
@@ -183,19 +184,19 @@ impl GetValByKey for bool {
     }
 }
 
-impl GetValByKey for Vec<u32> {
+impl GetValByKey for Vec<u8> {
     fn get_val_by_key(
         root: &linked_hash_map::LinkedHashMap<Yaml, Yaml>,
         key: &str,
         prog_name: &str,
-    ) -> Option<Vec<u32>> {
+    ) -> Option<Vec<u8>> {
         match root.get(&Yaml::String(String::from(key))) {
             Some(a) => match a.as_vec() {
                 Some(b) => {
-                    let mut resulting_vector = Vec::<u32>::with_capacity(2);
+                    let mut resulting_vector = Vec::<u8>::with_capacity(1);
                     for code in b.iter() {
                         match code.as_i64() {
-                            Some(c) => match u32::try_from(c) {
+                            Some(c) => match u8::try_from(c) {
                                 Ok(d) => resulting_vector.push(d),
                                 Err(_) => {
                                     eprintln!(
@@ -212,6 +213,10 @@ impl GetValByKey for Vec<u32> {
                             }
                         }
                     }
+                    resulting_vector.sort();
+                    resulting_vector.dedup();
+                    resulting_vector.shrink_to_fit();
+                    //optimising size of vec, cause it's immutable
                     Some(resulting_vector)
                 }
                 None => {
@@ -318,34 +323,52 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
             false
         }
     };
-    let mut exitcodes = match programm_params.get(&Yaml::String(String::from("exitcodes"))) {
-        Some(a) => match a.as_vec() {
-            None => {
-                eprintln!(
-                    "Failed parsing exitcodes for {}. Exitcodes: {:#?}",
-                    prog_name, a
-                );
-                vec![0]
-            }
-            Some(b) => {
-                let mut resulting_vector = Vec::<u32>::with_capacity(2);
-                for code in b.iter() {
-                    resulting_vector.push(match code.as_i64() {
-                        Some(c) => c as u32,
-                        None => 0,
-                    });
-                }
-                resulting_vector
-            }
-        },
+    let exitcodes = match Vec::<u8>::get_val_by_key(programm_params, "exitcodes", prog_name) {
+        Some(a) => a,
         None => {
-            eprintln!("Exitcodes for {} not found. Setting default.", prog_name);
+            eprintln!("Error parsing exitcodes. Setting default :[0]");
             vec![0]
+        }
+    };
+    let start_retries = match u32::get_val_by_key(programm_params, "startretries", prog_name) {
+        Some(a) => a,
+        None => {
+            eprintln!("Setting default: 0");
+            0
+        }
+    };
+    let start_time = match u32::get_val_by_key(programm_params, "starttime", prog_name) {
+        Some(a) => a,
+        None => {
+            eprintln!("Setting default: 0");
+            0
+        }
+    };
+    let stop_time = match u32::get_val_by_key(programm_params, "stoptime", prog_name) {
+        Some(a) => a,
+        None => {
+            eprintln!("Setting default: 0");
+            0
+        }
+    };
+    let stdout = PathBuf::get_val_by_key(programm_params, "stdout", prog_name);
+    let stderr = PathBuf::get_val_by_key(programm_params, "stderr", prog_name);
+    let stopsignal = match Signal::from_str(
+        match String::get_val_by_key(programm_params, "stopsignal", prog_name) {
+            Some(a) => a.borrow(),
+            None => "KILL",
+        },
+    ) {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("Error parsing {:#?} as signal for {}", e, prog_name);
+            Signal::SIGKILL
         }
     };
     println!(
         "PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} WORKING_DIR: {}\n\
-         AUTOSTART: {}, AUTORESTART: {}, EXITCODES: {:?}",
+         AUTOSTART: {}, AUTORESTART: {}, EXITCODES: {:?}\n\
+         START_RETRIES: {}, STARTTIME: {}, STOPTIME: {}",
         prog_name,
         cmd,
         numprocs,
@@ -353,7 +376,10 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
         working_dir.display(),
         autostart,
         autorestart,
-        exitcodes
+        exitcodes,
+        start_retries,
+        start_time,
+        stop_time
     );
     None
 }
