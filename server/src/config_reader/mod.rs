@@ -1,11 +1,13 @@
 use linked_hash_map::LinkedHashMap;
 use signal::Signal;
+use std::convert::TryFrom;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
 extern crate yaml_rust;
 
+use std::borrow::Borrow;
 use yaml_rust::{Yaml, YamlLoader};
 
 pub struct Task<'i> {
@@ -28,52 +30,107 @@ struct ReturnTypesForGetValByKey {}
 
 impl<'i> TaskList<'i> {}
 
-enum YamlTypes {
-    String,
-    Hash,
-    Array,
-    Integer,
-    Real,
-}
-
 trait GetValByKey {
-    fn get_val_by_key<'a>(&self, root: linked_hash_map::LinkedHashMap<Yaml, Yaml>) -> Option<Self>
+    fn get_val_by_key<'a>(
+        root: &linked_hash_map::LinkedHashMap<Yaml, Yaml>,
+        key: &str,
+        prog_name: &str,
+    ) -> Option<Self>
     where
         Self: Sized;
 }
 
-impl GetValByKey for &str {
-    fn get_val_by_key<'a>(&self, root: linked_hash_map::LinkedHashMap<Yaml, Yaml>) -> Option<&str> {
-        None
+impl GetValByKey for String {
+    fn get_val_by_key(
+        root: &linked_hash_map::LinkedHashMap<Yaml, Yaml>,
+        key: &str,
+        prog_name: &str,
+    ) -> Option<String> {
+        match root.get(&Yaml::String(String::from(key))) {
+            Some(a) => match a.as_str() {
+                Some(b) => Some(String::from(b)),
+                None => {
+                    eprintln!(
+                        "Error parsing {:#?} as string for {} field in {}",
+                        a, key, prog_name
+                    );
+                    None
+                }
+            },
+            None => {
+                eprintln!("Field {} for programm {} is not found", key, prog_name);
+                None
+            }
+        }
     }
 }
-//fn get_val_by_key<'a, T>(
-//    root: &'a linked_hash_map::LinkedHashMap<Yaml, Yaml>,
-//    key_to_find: &str,
-//    key_type: YamlTypes,
-//    prog_name: &str,
-//) -> Option<T> {
-//    let found = match root.get(&Yaml::String(String::from(key_to_find))) {
-//        Some(a) => match T {
-//            YamlTypes::String => match root.get(&Yaml::String(String::from(key_to_find))) {
-//                Some(a) => {
-//                    return a.as_str();
-//                }
-//                None => {
-//                    eprintln!(
-//                        "Error parsing {} for {}. Field is not found.",
-//                        key_to_find, prog_name
-//                    );
-//                }
-//            },
-//            YamlTypes::Hash => {}
-//            YamlTypes::Array => {}
-//            YamlTypes::Integer => {}
-//            YamlTypes::Real => {}
-//        },
-//        None => {}
-//    };
-//}
+
+impl GetValByKey for u32 {
+    fn get_val_by_key(
+        root: &linked_hash_map::LinkedHashMap<Yaml, Yaml>,
+        key: &str,
+        prog_name: &str,
+    ) -> Option<u32> {
+        match root.get(&Yaml::String(String::from(key))) {
+            Some(a) => match a.as_i64() {
+                Some(b) => match u32::try_from(b) {
+                    Ok(c) => Some(c),
+                    Err(_) => {
+                        eprintln!(
+                            "Error parsing {:#?} as uint32 for {} field in {}",
+                            b, key, prog_name,
+                        );
+                        None
+                    }
+                },
+                None => {
+                    eprintln!(
+                        "Error parsing {:#?} as uint32 for {} field in {}",
+                        a, key, prog_name
+                    );
+                    None
+                }
+            },
+            None => {
+                eprintln!("Field {} for program {} is not found", key, prog_name);
+                None
+            }
+        }
+    }
+}
+impl GetValByKey for u16 {
+    fn get_val_by_key(
+        root: &linked_hash_map::LinkedHashMap<Yaml, Yaml>,
+        key: &str,
+        prog_name: &str,
+    ) -> Option<u16> {
+        match root.get(&Yaml::String(String::from(key))) {
+            Some(a) => match a.as_i64() {
+                Some(b) => match u16::try_from(b) {
+                    Ok(c) => Some(c),
+                    Err(_) => {
+                        eprintln!(
+                            "Error parsing {:#?} as u16 for {} field in {}",
+                            b, key, prog_name,
+                        );
+                        None
+                    }
+                },
+                None => {
+                    eprintln!(
+                        "Error parsing {:#?} as u16 for {} field in {}",
+                        a, key, prog_name
+                    );
+                    None
+                }
+            },
+            None => {
+                eprintln!("Field {} for program {} is not found", key, prog_name);
+                None
+            }
+        }
+    }
+}
 
 pub fn get_working_dir_from_cmd(cmd: &str) -> &Path {
     match cmd.split_whitespace().next() {
@@ -97,140 +154,124 @@ pub fn create_yaml_structs<'i>(k: &Yaml, v: &Yaml) -> Option<Task<'i>> {
             return None;
         }
     };
-    let cmd = match programm_params.get(&Yaml::String(String::from("cmd"))) {
-        Some(a) => match a.as_str() {
-            Some(b) => b,
-            None => {
-                eprintln!("Error parsing {} {:?} cmd path", prog_name, a);
-                return None;
-            }
-        },
+    let cmd = match String::get_val_by_key(programm_params, "cmd", prog_name) {
+        Some(a) => a,
         None => {
-            eprintln!("Error parsing cmd path for {}", prog_name);
             return None;
         }
     };
-    let numprocs = match programm_params.get(&Yaml::String(String::from("numprocs"))) {
-        Some(a) => match a.as_i64() {
-            Some(b) => b as u16,
-            None => {
+    let numprocs = match u16::get_val_by_key(programm_params, "numprocs", prog_name) {
+        Some(a) => {
                 eprintln!("Error parsing {} {:?}  numprocs.", prog_name, a);
                 1u16
-            }
         },
         None => {
             eprintln!("No numprocs for {} is given. Using default 1", prog_name);
             1u16
         }
     };
-    let umask = match programm_params.get(&Yaml::String(String::from("umask"))) {
-        Some(a) => match a.as_i64() {
-            Some(b) => b as u16,
-            None => {
-                eprintln!("Error parsing umask {:#?} for {}", a, prog_name);
-                0
-            }
-        },
+    let umask =match  u16::get_val_by_key(root_params, "umask", prog_name) {
+        Some(a) => a,
         None => {
             eprintln!("Umask is not set. Using default 000");
             0
         }
     };
-    let working_dir = match programm_params.get(&Yaml::String(String::from("workingdir"))) {
-        Some(a) => match a.as_str() {
-            Some(b) => Path::new(b),
-            None => {
-                eprintln!("Error parsing path for {}. Working_dir: {:?}", prog_name, a);
-                get_working_dir_from_cmd(&cmd)
-            }
-        },
-        None => {
-            eprintln!(
-                "Error parsing working dir for {}. Setting default.",
-                prog_name
-            );
-            get_working_dir_from_cmd(&cmd)
-        }
-    };
-    let autostart = match programm_params.get(&Yaml::String(String::from("autostart"))) {
-        Some(a) => match a.as_bool() {
-            Some(b) => b,
-            None => {
-                eprintln!("Failed parsing autostart: {:#?} for {}", a, prog_name);
-                false
-            }
-        },
-        None => {
-            eprintln!("autostart for {} not found. Setting default.", prog_name);
-            false
-        }
-    };
-    let autorestart = match programm_params.get(&Yaml::String(String::from("autorestart"))) {
-        Some(a) => match a.as_str() {
-            Some(b) => match b.to_lowercase().as_str() {
-                "unexpected" => false,
-                "expected" => true,
-                _ => {
-                    eprintln!(
-                        "Failed parsing autorestart for {}. Autorestart: {:#?}",
-                        prog_name, b
-                    );
-                    false
-                }
-            },
-            None => {
-                eprintln!(
-                    "Failed parsing autorestart for {}. Autorestart: {:#?}",
-                    prog_name, a
-                );
-                false
-            }
-        },
-        None => {
-            eprintln!("Autorestart field for {} is not found.", prog_name);
-            false
-        }
-    };
-    let mut exitcodes = match programm_params.get(&Yaml::String(String::from("exitcodes"))) {
-        Some(a) => match a.as_vec() {
-            None => {
-                eprintln!(
-                    "Failed parsing exitcodes for {}. Exitcodes: {:#?}",
-                    prog_name, a
-                );
-                vec![0]
-            }
-            Some(b) => {
-                let mut resulting_vector = Vec::<u32>::with_capacity(2);
-                for code in b.iter() {
-                    resulting_vector.push(match code.as_i64() {
-                        Some(c) => c as u32,
-                        None => 0,
-                    });
-                }
-                resulting_vector
-            }
-        },
-        None => {
-            eprintln!("Exitcodes for {} not found. Setting default.", prog_name);
-            vec![0]
-        }
-    };
-    println!("{:#?}", programm_params);
-    exitcodes.sort();
-    exitcodes.dedup();
-    println!(
-        "PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} WORKING_DIR: {}\n\
-         AUTOSTART: {}, AUTORESTART: {}, EXITCODES: {:?}",
-        prog_name,
-        cmd,
-        numprocs,
-        umask,
-        working_dir.display(),
-        autostart,
-        autorestart,
-        exitcodes
-    );
+    ``	let working_dir = match programm_params.get(&Yaml::String(String::from("workingdir"))) {
+    		Some(a) => match a.as_str() {
+    			Some(b) => Path::new(b),
+    			None => {
+    				eprintln!("Error parsing path for {}. Working_dir: {:?}", prog_name, a);
+    				get_working_dir_from_cmd(&cmd)
+    			}
+    		},
+    		None => {
+    			eprintln!(
+    				"Error parsing working dir for {}. Setting default.",
+    				prog_name
+    			);
+    			get_working_dir_from_cmd(&cmd)
+    		}
+    	};``
+    //	let autostart = match programm_params.get(&Yaml::String(String::from("autostart"))) {
+    //		Some(a) => match a.as_bool() {
+    //			Some(b) => b,
+    //			None => {
+    //				eprintln!("Failed parsing autostart: {:#?} for {}", a, prog_name);
+    //				false
+    //			}
+    //		},
+    //		None => {
+    //			eprintln!("autostart for {} not found. Setting default.", prog_name);
+    //			false
+    //		}
+    //	};
+    //	let autorestart = match programm_params.get(&Yaml::String(String::from("autorestart"))) {
+    //		Some(a) => match a.as_str() {
+    //			Some(b) => match b.to_lowercase().as_str() {
+    //				"unexpected" => false,
+    //				"expected" => true,
+    //				_ => {
+    //					eprintln!(
+    //						"Failed parsing autorestart for {}. Autorestart: {:#?}",
+    //						prog_name, b
+    //					);
+    //					false
+    //				}
+    //			},
+    //			None => {
+    //				eprintln!(
+    //					"Failed parsing autorestart for {}. Autorestart: {:#?}",
+    //					prog_name, a
+    //				);
+    //				false
+    //			}
+    //		},
+    //		None => {
+    //			eprintln!("Autorestart field for {} is not found.", prog_name);
+    //			false
+    //		}
+    //	};
+    //	let mut exitcodes = match programm_params.get(&Yaml::String(String::from("exitcodes"))) {
+    //		Some(a) => match a.as_vec() {
+    //			None => {
+    //				eprintln!(
+    //					"Failed parsing exitcodes for {}. Exitcodes: {:#?}",
+    //					prog_name, a
+    //				);
+    //				vec![0]
+    //			}
+    //			Some(b) => {
+    //				let mut resulting_vector = Vec::<u32>::with_capacity(2);
+    //				for code in b.iter() {
+    //					resulting_vector.push(match code.as_i64() {
+    //						Some(c) => c as u32,
+    //						None => 0,
+    //					});
+    //				}
+    //				resulting_vector
+    //			}
+    //		},
+    //		None => {
+    //			eprintln!("Exitcodes for {} not found. Setting default.", prog_name);
+    //			vec![0]
+    //		}
+    //	};
+    //	println!("{:#?}", programm_params);
+    //	exitcodes.sort();
+    //	exitcodes.dedup();
+    //	println!(
+    //		"PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} WORKING_DIR: {}\n\
+    //         AUTOSTART: {}, AUTORESTART: {}, EXITCODES: {:?}",
+    //		prog_name,
+    //		cmd,
+    //		numprocs,
+    //		umask,
+    //		working_dir.display(),
+    //		autostart,
+    //		autorestart,
+    //		exitcodes
+    //	);
     None
 }
 
@@ -260,6 +301,7 @@ pub fn read_config(config_path: &Path) {
         create_yaml_structs(k, v);
     }
 }
+
 //	println!("{:#?}", root_map);
 
 //#[cfg(test)]
