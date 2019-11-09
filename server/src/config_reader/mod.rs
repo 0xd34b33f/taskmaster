@@ -3,11 +3,10 @@ use std::convert::TryFrom;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-
-extern crate yaml_rust;
-
-use std::collections::HashMap;
 use std::str::FromStr;
+extern crate yaml_rust;
+use log::{debug, error, info, trace, warn};
+use std::collections::HashMap;
 use yaml_rust::{Yaml, YamlLoader};
 
 #[derive(Debug, PartialEq)]
@@ -49,7 +48,7 @@ impl GetValByKey for String {
             Some(a) => match a.as_str() {
                 Some(b) => Some(String::from(b)),
                 None => {
-                    eprintln!(
+                    warn!(
                         "Error parsing {:#?} as string for {} field in {}",
                         a, key, prog_name
                     );
@@ -57,7 +56,7 @@ impl GetValByKey for String {
                 }
             },
             None => {
-                eprintln!("Field {} for programm {} is not found", key, prog_name);
+                info!("Field {} for programm {} is not found", key, prog_name);
                 None
             }
         }
@@ -75,7 +74,7 @@ impl GetValByKey for u32 {
                 Some(b) => match u32::try_from(b) {
                     Ok(c) => Some(c),
                     Err(_) => {
-                        eprintln!(
+                        warn!(
                             "Error parsing {:#?} as uint32 for {} field in {}",
                             b, key, prog_name,
                         );
@@ -83,7 +82,7 @@ impl GetValByKey for u32 {
                     }
                 },
                 None => {
-                    eprintln!(
+                    warn!(
                         "Error parsing {:#?} as uint32 for {} field in {}",
                         a, key, prog_name
                     );
@@ -91,7 +90,7 @@ impl GetValByKey for u32 {
                 }
             },
             None => {
-                eprintln!("Field {} for program {} is not found", key, prog_name);
+                info!("Field {} for program {} is not found", key, prog_name);
                 None
             }
         }
@@ -109,7 +108,7 @@ impl GetValByKey for u16 {
                 Some(b) => match u16::try_from(b) {
                     Ok(c) => Some(c),
                     Err(_) => {
-                        eprintln!(
+                        warn!(
                             "Error parsing {:#?} as u16 for {} field in {}",
                             b, key, prog_name,
                         );
@@ -117,7 +116,7 @@ impl GetValByKey for u16 {
                     }
                 },
                 None => {
-                    eprintln!(
+                    warn!(
                         "Error parsing {:#?} as u16 for {} field in {}",
                         a, key, prog_name
                     );
@@ -125,7 +124,7 @@ impl GetValByKey for u16 {
                 }
             },
             None => {
-                eprintln!("Field {} for program {} is not found", key, prog_name);
+                info!("Field {} for program {} is not found", key, prog_name);
                 None
             }
         }
@@ -142,7 +141,7 @@ impl GetValByKey for PathBuf {
             Some(a) => match a.as_str() {
                 Some(b) => Some(PathBuf::from(b)),
                 None => {
-                    eprintln!(
+                    warn!(
                         "Error parsing {:#?} as path for {} field in {}",
                         a, key, prog_name
                     );
@@ -150,7 +149,7 @@ impl GetValByKey for PathBuf {
                 }
             },
             None => {
-                eprintln!("Field {} for programm {} is not found", key, prog_name);
+                info!("Field {} for programm {} is not found", key, prog_name);
                 None
             }
         }
@@ -167,7 +166,7 @@ impl GetValByKey for bool {
             Some(a) => match a.as_bool() {
                 Some(b) => Some(b),
                 None => {
-                    eprintln!(
+                    warn!(
                         "Error parsing {:#?} as bool for {} field in {}",
                         a, key, prog_name
                     );
@@ -175,7 +174,7 @@ impl GetValByKey for bool {
                 }
             },
             None => {
-                eprintln!("Field {} for programm {} is not found", key, prog_name);
+                info!("Field {} for programm {} is not found", key, prog_name);
                 None
             }
         }
@@ -197,17 +196,14 @@ impl GetValByKey for Vec<u8> {
                             Some(c) => match u8::try_from(c) {
                                 Ok(d) => resulting_vector.push(d),
                                 Err(_) => {
-                                    eprintln!(
+                                    warn!(
                                         "Error parsing {} as u32 for {} in {}",
                                         c, key, prog_name
                                     );
                                 }
                             },
                             None => {
-                                eprintln!(
-                                    "Error parsing {:#?} as i64 for {} in {}",
-                                    b, key, prog_name
-                                );
+                                warn!("Error parsing {:#?} as i64 for {} in {}", b, key, prog_name);
                             }
                         }
                     }
@@ -218,7 +214,7 @@ impl GetValByKey for Vec<u8> {
                     Some(resulting_vector)
                 }
                 None => {
-                    eprintln!(
+                    warn!(
                         "Error parsing {:#?} as vec for {} field in {}",
                         a, key, prog_name
                     );
@@ -226,7 +222,7 @@ impl GetValByKey for Vec<u8> {
                 }
             },
             None => {
-                eprintln!("Field {} for programm {} is not found", key, prog_name);
+                info!("Field {} for programm {} is not found", key, prog_name);
                 None
             }
         }
@@ -250,7 +246,7 @@ fn autorestart_parser(
                 "unexpected" => false,
                 "expected" => true,
                 _ => {
-                    eprintln!(
+                    warn!(
                         "Failed parsing autorestart for {}. Autorestart: {:#?}",
                         prog_name, b
                     );
@@ -258,7 +254,7 @@ fn autorestart_parser(
                 }
             },
             None => {
-                eprintln!(
+                warn!(
                     "Failed parsing autorestart for {}. Autorestart: {:#?}",
                     prog_name, a
                 );
@@ -266,7 +262,7 @@ fn autorestart_parser(
             }
         },
         None => {
-            eprintln!("Autorestart field for {} is not found.", prog_name);
+            info!("Autorestart field for {} is not found.", prog_name);
             false
         }
     };
@@ -289,7 +285,7 @@ fn env_constructor(
                             Yaml::Integer(c) => c.to_string(),
                             Yaml::Real(c) => c.to_owned(),
                             _ => {
-                                eprintln!(
+                                warn!(
                                     "Error parsing env key for {}. Key cnadidate: {:#?}",
                                     prog_name, k
                                 );
@@ -301,8 +297,8 @@ fn env_constructor(
                             Yaml::Integer(c) => c.to_string(),
                             Yaml::Real(c) => c.to_owned(),
                             _ => {
-                                eprintln!(
-                                    "Error parsing env key for {}. Key cnadidate: {:#?}",
+                                warn!(
+                                    "Error parsing env key for {}. Key candidate: {:#?}",
                                     prog_name, k
                                 );
                                 continue;
@@ -312,13 +308,13 @@ fn env_constructor(
                     }
                 }
                 None => {
-                    eprintln!("Env is malformed. ENV: {:#?}", a);
+                    warn!("Env is malformed. ENV: {:#?}", a);
                     ()
                 }
             };
         }
         None => {
-            eprintln!("No env params for {}", prog_name);
+            info!("No env params for {}", prog_name);
         }
     };
 }
@@ -327,14 +323,14 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
     let prog_name = match k.as_str() {
         Some(a) => a,
         None => {
-            eprintln!("Invalid programm name {:#?}", k);
+            error!("Invalid programm name {:#?}", k);
             return None;
         }
     };
     let programm_params = match v.as_hash() {
         Some(a) => a,
         None => {
-            eprintln!("Error parsing body of {}", prog_name);
+            error!("Error parsing body of {}", prog_name);
             return None;
         }
     };
@@ -347,25 +343,26 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
     let numprocs = match u16::get_val_by_key(programm_params, "numprocs", prog_name) {
         Some(a) => a,
         None => {
-            eprintln!("No numprocs for {} is given. Using default 1", prog_name);
+            info!("No numprocs for {} is given. Using default 1", prog_name);
             1u16
         }
     };
     let umask = match u16::get_val_by_key(programm_params, "umask", prog_name) {
         Some(a) => a,
         None => {
-            eprintln!("Umask is not set. Using default 000");
+            info!("Umask is not set. Using default 000");
             0
         }
     };
     let working_dir = match PathBuf::get_val_by_key(programm_params, "workingdir", prog_name) {
         Some(a) => a,
         None => {
-            eprintln!(
+            let wd = get_working_dir_from_cmd(&cmd);
+            info!(
                 "Error parsing working dir for {}. Setting default.",
-                prog_name
+                wd.display()
             );
-            get_working_dir_from_cmd(&cmd)
+            wd
         }
     };
     const BOOL_MESSAGE: &str = "Setting default value: false";
@@ -373,7 +370,7 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
     let autostart = match bool::get_val_by_key(programm_params, "autostart", prog_name) {
         Some(a) => a,
         None => {
-            eprintln!("{}", BOOL_MESSAGE);
+            info!("{}", BOOL_MESSAGE);
             false
         }
     };
@@ -382,28 +379,28 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
     let exitcodes = match Vec::<u8>::get_val_by_key(programm_params, "exitcodes", prog_name) {
         Some(a) => a,
         None => {
-            eprintln!("Error parsing exitcodes. Setting default :[0]");
+            info!("Error parsing exitcodes. Setting default :[0]");
             vec![0]
         }
     };
     let start_retries = match u32::get_val_by_key(programm_params, "startretries", prog_name) {
         Some(a) => a,
         None => {
-            eprintln!("Setting default: 0");
+            info!("Setting default: 0");
             0
         }
     };
     let start_time = match u32::get_val_by_key(programm_params, "starttime", prog_name) {
         Some(a) => a,
         None => {
-            eprintln!("Setting default: 0");
+            info!("Setting default: 0");
             0
         }
     };
     let stop_time = match u32::get_val_by_key(programm_params, "stoptime", prog_name) {
         Some(a) => a,
         None => {
-            eprintln!("Setting default: 0");
+            info!("Setting default: 0");
             0
         }
     };
@@ -424,8 +421,8 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
     ) {
         Ok(b) => b,
         Err(e) => {
-            eprintln!("Error parsing {:#?} as signal for {}", e, prog_name);
-            Signal::SIGKILL
+            warn!("Error parsing {:#?} as signal for {}", e, prog_name);
+            Signal::SIGTERM
         }
     };
 
@@ -457,7 +454,7 @@ pub fn read_config(config_path: &Path) -> Vec<Task> {
     let mut file = match file {
         Ok(f) => f,
         Err(_) => {
-            eprintln!("Error opening {}", config_path.display());
+            error!("Error opening {}", config_path.display());
             std::process::exit(1);
         }
     };
@@ -465,7 +462,7 @@ pub fn read_config(config_path: &Path) -> Vec<Task> {
     match file.read_to_string(&mut file_data) {
         Ok(_a) => (),
         Err(e) => {
-            eprintln!("Error reading file to string. {:#?}", e);
+            error!("Error reading file to string. {:#?}", e);
             std::process::exit(1);
         }
     }
@@ -475,7 +472,7 @@ pub fn read_config(config_path: &Path) -> Vec<Task> {
     let root_element = match root_element {
         Some(a) => a,
         None => {
-            eprintln!("Root element not found.");
+            error!("Root element not found.");
             std::process::exit(1);
         }
     };
@@ -484,7 +481,7 @@ pub fn read_config(config_path: &Path) -> Vec<Task> {
         match create_yaml_structs(k, v) {
             Some(a) => task_list.push(a),
             None => {
-                eprintln!("Error constructing parameters for {:#?}", k);
+                info!("Error constructing parameters for {:#?}", k);
             }
         }
     }
