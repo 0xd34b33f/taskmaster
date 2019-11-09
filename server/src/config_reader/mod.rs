@@ -6,10 +6,11 @@ use std::path::{Path, PathBuf};
 
 extern crate yaml_rust;
 
+use std::borrow::Borrow;
 use std::str::FromStr;
 use yaml_rust::{Yaml, YamlLoader};
 
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, PartialEq)]
 pub struct Task {
     program_name: String,
     program_path: String,
@@ -26,10 +27,6 @@ pub struct Task {
     stderr: Option<PathBuf>,
     stopsignal: Signal,
 }
-
-pub struct TaskList(Vec<Task>);
-
-impl TaskList {}
 
 trait GetValByKey {
     fn get_val_by_key<'a>(
@@ -372,24 +369,6 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
             Signal::SIGKILL
         }
     };
-    //    println!(
-    //        "PROGNAME: {} CMD: {} NUMPROCS: {} UMASK: {} WORKING_DIR: {}\n\
-    //         AUTOSTART: {}, AUTORESTART: {}, EXITCODES: {:?}\n\
-    //         START_RETRIES: {}, STARTTIME: {}, STOPTIME: {}\n\
-    //         SIGNAL: {:#?}",
-    //        prog_name,
-    //        cmd,
-    //        numprocs,
-    //        umask,
-    //        working_dir.display(),
-    //        autostart,
-    //        autorestart,
-    //        exitcodes,
-    //        start_retries,
-    //        start_time,
-    //        stop_time,
-    //        stopsignal
-    //    );
     Some(Task {
         program_name: String::from_str(prog_name).unwrap(),
         program_path: cmd,
@@ -408,7 +387,8 @@ pub fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
     })
 }
 
-pub fn read_config(config_path: &Path) {
+pub fn read_config(config_path: &Path) -> Vec<Task> {
+    let mut task_list = Vec::<Task>::new();
     let file = File::open(config_path);
     let mut file = match file {
         Ok(f) => f,
@@ -418,7 +398,13 @@ pub fn read_config(config_path: &Path) {
         }
     };
     let mut file_data: String = String::new();
-    file.read_to_string(&mut file_data).expect("Empty file");
+    match file.read_to_string(&mut file_data) {
+        Ok(_a) => (),
+        Err(e) => {
+            eprintln!("Error reading file to string. {:#?}", e);
+            std::process::exit(1);
+        }
+    }
     let d = YamlLoader::load_from_str(&file_data).expect("empty file");
     let document = &d[0].as_hash().expect("Unwrap of YAML failed");
     let root_element = document.get(&Yaml::String(String::from("programs")));
@@ -431,14 +417,15 @@ pub fn read_config(config_path: &Path) {
     };
     let root_map = root_element.as_hash().unwrap();
     for (k, v) in root_map {
-        println!("{:#?}", create_yaml_structs(k, v));
+        match create_yaml_structs(k, v) {
+            Some(a) => task_list.push(a),
+            None => {
+                eprintln!("Error constructing parameters for {:#?}", k);
+            }
+        }
     }
+    task_list
 }
 
-//	println!("{:#?}", root_map);
-
-//#[cfg(test)]
-pub fn task_list_check() {
-    let path = String::from("/home/odm3n/dev/taskmaster/server/src/config_reader/test_data.yaml");
-    read_config(Path::new(&path));
-}
+#[cfg(test)]
+mod tests;
