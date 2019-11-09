@@ -3,8 +3,7 @@ use signal::Signal;
 use std::path::PathBuf;
 
 #[test]
-pub fn task_list_check() {
-    println!("{:?}", std::env::current_exe().unwrap());
+pub fn normal_config() {
     let mut path = std::env::current_exe().unwrap();
     let root_path = path.ancestors().nth(4).unwrap();
     println!("Root path: {}", root_path.display());
@@ -39,11 +38,20 @@ pub fn task_list_check() {
                 startretries: 3,
                 starttime: 5,
                 stoptime: 10,
-                stdout: Some(PathBuf::from("/tmp/vgsworker.stdout"),),
-                stderr: Some(PathBuf::from("/tmp/vgsworker.stderr"),),
+                stdout: Some(PathBuf::from("/tmp/vgsworker.stdout")),
+                stderr: Some(PathBuf::from("/tmp/vgsworker.stderr")),
                 stopsignal: Signal::SIGUSR1,
             },
         ],
         res
     )
+}
+
+#[test]
+pub fn bad_config() {
+    let mut path = std::env::current_exe().unwrap();
+    let root_path = path.ancestors().nth(4).unwrap();
+    let res = read_config(&root_path.join("server/src/config_reader/bad_config.yaml"));
+    println!("Result: {:#?}", res);
+    assert_eq!(Vec::<Task>::new(), res);
 }
