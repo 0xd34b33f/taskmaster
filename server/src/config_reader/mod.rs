@@ -492,7 +492,5 @@ pub fn read_config(config_path: &Path) -> Vec<Task> {
 	task_list
 }
 
-//#[cfg(test)]
-//#[path = "../../tests/mod.rs"]
-//mod tests;
-////mod ;
+#[cfg(test)]
+mod integration_test;
