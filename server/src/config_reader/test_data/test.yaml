@@ -1,0 +1,38 @@
+programs:
+  tail:
+    cmd: "zsh -c /Users/qhetting/DEV/rust/taskmaster/server/src/config_reader/test_data/super_highload_task.sh"
+    numprocs: 1
+    umask: 022
+    workingdir: ./
+    autostart: True
+    autorestart: unexpected
+    exitcodes:
+      - 0
+    startretries: 3
+    starttime: 3
+    stopsignal: TERM
+    stoptime: 10
+    stdout: /tmp/out
+    stderr: /tmp/out.err
+    env:
+      STARTED_BY: taskmaster
+      ANSWER: 42
+#    ls:
+#      cmd: "/bin/ls -lR /"
+#      numprocs: 3
+#      umask: 022
+#      workingdir: /tmp
+#      autostart: true
+#      autorestart: expected
+#      exitcodes:
+#        - 2
+#        - 2
+#      startretries: 3
+#      starttime: 5
+#      stopsignal: TERM
+#      stoptime: 10
+#      stdout: /tmp/ls.stdout
+#      stderr: /tmp/ls.stderr
+#      env:
+#        STARTED_BY: taskmaster
+#        ANSWER: 42

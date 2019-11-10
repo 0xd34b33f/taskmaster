@@ -8,7 +8,7 @@ pub fn normal_config() {
     let path = std::env::current_exe().unwrap();
     let root_path = path.ancestors().nth(4).unwrap();
     println!("Root path: {}", root_path.display());
-    let res = read_config(&root_path.join("server/src/config_reader/test_data.yaml"));
+    let res = read_config(&root_path.join("server/src/config_reader/test_data/test_data.yaml"));
     let mut map = HashMap::new();
     map.insert(String::from("STARTED_BY"), String::from("taskmaster"));
     map.insert(String::from("ANSWER"), String::from("42"));
@@ -57,7 +57,7 @@ pub fn normal_config() {
 pub fn bad_config() {
     let path = std::env::current_exe().unwrap();
     let root_path = path.ancestors().nth(4).unwrap();
-    let res = read_config(&root_path.join("server/src/config_reader/bad_config.yaml"));
+    let res = read_config(&root_path.join("server/src/config_reader/test_data/bad_config.yaml"));
     println!("Result: {:#?}", res);
     assert_eq!(Vec::<Task>::new(), res);
 }
