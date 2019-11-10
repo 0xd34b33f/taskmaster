@@ -1,5 +1,6 @@
 use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, error, info, trace, warn};
+use clap::App;
 
 pub mod config_reader;
 
@@ -51,5 +52,7 @@ fn set_up_logging() {
 
 fn main() {
     set_up_logging();
-    //    println!("{:?}", std::env::current_exe().unwrap());
+    
+//    let mock_yaml_path=
+//        println!("{:?}", std::env::current_exe().unwrap());
 }
