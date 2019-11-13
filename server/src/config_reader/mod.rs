@@ -409,16 +409,7 @@ fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
             0
         }
     };
-    let stdout = match PathBuf::get_val_by_key(programm_params, "stdout", prog_name) {
-        Some(a) => match Stdio::try_from(&a) {
-            Ok(a) => a,
-            Err(e) => {
-                warn!("Error constructing stdout for {}. {} : {}", a.display(), prog_name, e);
-                Stdio:
-            }
-        },
-        None => (),
-    };
+    let stdout = PathBuf::get_val_by_key(programm_params, "stdout", prog_name);
     let stderr = PathBuf::get_val_by_key(programm_params, "stderr", prog_name);
     let mut sign;
     let stopsignal = match Signal::from_str(
