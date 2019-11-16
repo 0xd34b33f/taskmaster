@@ -33,7 +33,7 @@ fn spawn_process(task: Task) {
         }
     };
 }
-
+#[cfg(debug_assertions)]
 fn output_builder(out: &Option<PathBuf>, name: &str) -> Stdio {
     if let Some(stdout) = out {
         let stdoutput = match std::fs::File::create(&stdout) {
@@ -45,12 +45,32 @@ fn output_builder(out: &Option<PathBuf>, name: &str) -> Stdio {
                     name,
                     e
                 );
-              return Stdio::null();
+                Stdio::piped()
             }
         };
         return stdoutput;
     }
-    Stdio::null()
+     return Stdio::piped();
+}
+
+#[cfg(not(debug_assertions))]
+fn output_builder(out: &Option<PathBuf>, name: &str) -> Stdio {
+    if let Some(stdout) = out {
+        let stdoutput = match std::fs::File::create(&stdout) {
+            Ok(f) => Stdio::from(f),
+            Err(e) => {
+                error!(
+                    "Error opening {} as stdout/stderr for {} : {}",
+                    stdout.display(),
+                    name,
+                    e
+                );
+                return Stdio::null();
+            }
+        };
+        return stdoutput;
+    }
+     return Stdio::null();
 }
 
 pub fn mange_tasks(config_path: PathBuf) {

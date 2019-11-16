@@ -1,6 +1,6 @@
 programs:
   highload:
-    cmd: "zsh -c /Users/qhetting/DEV/rust/taskmaster/server/src/config_reader/test_data/super_highload_task.sh"
+    cmd: "/bin/ls -la"
     numprocs: 1
     umask: 022
     workingdir: ./
