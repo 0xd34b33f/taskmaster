@@ -1,9 +1,9 @@
 use crate::config_reader::{read_config, Task};
 use log::{debug, error, info, trace, warn};
-use std::borrow::Borrow;
-use std::io::stdout;
+use std::io;
+use std::io::{stdout, Write};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 
 struct ProcessInfo {
     pid: u32,
@@ -15,26 +15,42 @@ struct TaskState {
 }
 
 fn spawn_process(task: Task) {
+    let cmd: Vec<&str> = task.program_path.split_whitespace().collect();
+    let mut programm_prototype = Command::new(cmd[0]);
+    programm_prototype
+        .args(&cmd[1..])
+        .envs(task.clone().env)
+        .stdout(output_builder(&task.stdout, &task.program_name))
+        .stderr(output_builder(&task.stderr, &task.program_name));
     debug!("Started spawning {}", task.program_name);
-    let cmd = task.program_path.split_whitespace();
-    let mut programm_prototype = Command::new(task.clone().program_name);
-    programm_prototype.args(cmd).envs(task.env);
-    if let Some(stdout) = task.stdout {
-        let stdoutput = match std::fs::File::open(&stdout) {
+    println!("{:#?}", programm_prototype);
+    let handle = programm_prototype.spawn();
+    match handle {
+        Ok(h) => info!("Successfully spawned {:#?}", h),
+        Err(e) => {
+            error!("Error spawning {} : {}.", &task.program_name, e);
+            info!("Task properties: {:#?}", task.clone());
+        }
+    };
+}
+
+fn output_builder(out: &Option<PathBuf>, name: &str) -> Stdio {
+    if let Some(stdout) = out {
+        let stdoutput = match std::fs::File::create(&stdout) {
             Ok(f) => Stdio::from(f),
             Err(e) => {
                 error!(
-                    "Error opening {} as stdout for {} : {}",
+                    "Error opening {} as stdout/stderr for {} : {}",
                     stdout.display(),
-                    task.program_name,
+                    name,
                     e
                 );
-                warn!("Setting default  value for stdout.");
-                std::process::Stdio::piped()
+              return Stdio::null();
             }
         };
-        programm_prototype.stdout(stdoutput);
+        return stdoutput;
     }
+    Stdio::null()
 }
 
 pub fn mange_tasks(config_path: PathBuf) {
