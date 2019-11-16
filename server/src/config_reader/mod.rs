@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::process::Stdio;
 use yaml_rust::{Yaml, YamlLoader};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Task {
     pub program_name: String,
     pub program_path: String,
