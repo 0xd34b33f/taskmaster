@@ -20,7 +20,7 @@ shell to the user. It does not HAVE to be a fully-fledged shell like 42sh, but i
 at the very least usable (Line editing, history... completion would also be nice). Take
 inspiration from supervisor’s control shell, supervisorctl.
 
-This shell must at least allow the user to:
+This shell must at least allow the user to: 
 • See the status of all the programs described in the config file ("status" command)  
 • Start / stop / restart programs  
 • Reload the configuration file without stopping the main program  
