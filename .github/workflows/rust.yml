@@ -1,9 +1,6 @@
 name: Rust
 
-on: 
-  push:
-    paths:
-    - '*.rs'
+on: [push]
 
 jobs:
   build:
