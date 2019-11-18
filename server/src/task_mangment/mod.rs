@@ -1,6 +1,8 @@
 use crate::config_reader::{read_config, Task};
 use log::{debug, error, info, trace, warn};
+use nix::sys::stat::{umask, Mode};
 use std::io;
+use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 
@@ -18,6 +20,13 @@ fn create_process_prototype(task: Task) -> Command {
         .stdout(output_builder(&task.stdout, &task.program_name))
         .stderr(output_builder(&task.stderr, &task.program_name))
         .current_dir(&task.woking_dir);
+    unsafe {
+        program_prototype.pre_exec(|| {
+            umask(Mode::empty());
+            Ok(())
+        });
+    };
+
     info!("Created prototype for {}", task.program_name);
     program_prototype
 }
@@ -69,7 +78,7 @@ fn output_builder(out: &Option<PathBuf>, name: &str) -> Stdio {
         };
         return stdoutput;
     }
-    return Stdio::piped();
+    Stdio::piped()
 }
 
 #[cfg(not(debug_assertions))]
@@ -90,7 +99,7 @@ fn output_builder(out: &Option<PathBuf>, name: &str) -> Stdio {
         };
         return stdoutput;
     }
-    return Stdio::null();
+    Stdio::null()
 }
 
 #[cfg(test)]

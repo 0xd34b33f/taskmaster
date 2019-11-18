@@ -352,11 +352,11 @@ fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
             1u16
         }
     };
-    let umask = match u16::get_val_by_key(programm_params, "umask", prog_name) {
+    let umask = match String::get_val_by_key(programm_params, "umask", prog_name) {
         Some(a) => a,
         None => {
             info!("Umask is not set. Using default 000");
-            0
+            "755".to_string()
         }
     };
     let working_dir = match PathBuf::get_val_by_key(programm_params, "workingdir", prog_name) {
@@ -439,7 +439,7 @@ fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
         program_path: cmd,
         woking_dir: working_dir,
         numprocs,
-        umask,
+        umask: 0,
         autostart,
         autorestart,
         exitcodes,
