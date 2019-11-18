@@ -52,22 +52,6 @@ pub fn mange_tasks(config_path: PathBuf) {
     }
 }
 
-#[cfg(test)]
-pub mod tests {
-    use crate::task_mangment::mange_tasks;
-    use std::process::Command;
-
-    #[test]
-    pub fn spawn_check() {
-        let path = std::env::current_exe().unwrap();
-        let root_path = path.ancestors().nth(4).unwrap();
-        mange_tasks(root_path.join("server/src/config_reader/test_data/test.yaml"));
-        let output = Command::new("/bin/ls").arg("-la").output().unwrap();
-        let test_read = std::fs::read("/tmp/out").unwrap();
-        assert_eq!(output.stdout, test_read);
-    }
-}
-
 #[cfg(debug_assertions)]
 fn output_builder(out: &Option<PathBuf>, name: &str) -> Stdio {
     if let Some(stdout) = out {
@@ -107,4 +91,20 @@ fn output_builder(out: &Option<PathBuf>, name: &str) -> Stdio {
         return stdoutput;
     }
     return Stdio::null();
+}
+
+#[cfg(test)]
+pub mod tests {
+    use crate::task_mangment::mange_tasks;
+    use std::process::Command;
+
+    #[test]
+    pub fn spawn_check() {
+        let path = std::env::current_exe().unwrap();
+        let root_path = path.ancestors().nth(4).unwrap();
+        mange_tasks(root_path.join("server/src/config_reader/test_data/test.yaml"));
+        let output = Command::new("/bin/ls").arg("-la").output().unwrap();
+        let test_read = std::fs::read("/tmp/out").unwrap();
+        assert_eq!(output.stdout, test_read);
+    }
 }
