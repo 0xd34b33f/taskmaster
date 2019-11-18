@@ -1,16 +1,14 @@
+use log::Level::Warn;
+use log::{debug, error, info, trace, warn};
 use signal::Signal;
+use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-
-extern crate yaml_rust;
-
-use log::Level::Warn;
-use log::{debug, error, info, trace, warn};
-use std::collections::HashMap;
-use std::process::Stdio;
+use umask::*;
 use yaml_rust::{Yaml, YamlLoader};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -18,7 +16,7 @@ pub struct Task {
     pub program_name: String,
     pub program_path: String,
     pub numprocs: u16,
-    pub umask: u16,
+    pub umask: Mode,
     pub woking_dir: PathBuf,
     pub autostart: bool,
     pub autorestart: bool,
@@ -291,7 +289,7 @@ fn env_constructor(
                             Yaml::Real(c) => c.to_owned(),
                             _ => {
                                 warn!(
-                                    "Error parsing env key for {}. Key cnadidate: {:#?}",
+                                    "Error parsing env key for {}. Key candidate {:#?}",
                                     prog_name, k
                                 );
                                 continue;
@@ -309,12 +307,11 @@ fn env_constructor(
                                 continue;
                             }
                         };
-                        env.insert(String::from(kk), String::from(vv));
+                        env.insert(kk, vv);
                     }
                 }
                 None => {
                     warn!("Env is malformed. ENV: {:#?}", a);
-                    ()
                 }
             };
         }
@@ -352,13 +349,8 @@ fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
             1u16
         }
     };
-    let umask = match String::get_val_by_key(programm_params, "umask", prog_name) {
-        Some(a) => a,
-        None => {
-            info!("Umask is not set. Using default 000");
-            "755".to_string()
-        }
-    };
+    let umask = umask_builder(prog_name, programm_params);
+
     let working_dir = match PathBuf::get_val_by_key(programm_params, "workingdir", prog_name) {
         Some(a) => a,
         None => {
@@ -439,7 +431,7 @@ fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
         program_path: cmd,
         woking_dir: working_dir,
         numprocs,
-        umask: 0,
+        umask,
         autostart,
         autorestart,
         exitcodes,
@@ -451,6 +443,32 @@ fn create_yaml_structs(k: &Yaml, v: &Yaml) -> Option<Task> {
         stderr,
         env,
     })
+}
+
+fn umask_builder(
+    prog_name: &str,
+    programm_params: &linked_hash_map::LinkedHashMap<Yaml, Yaml>,
+) -> Mode {
+    match programm_params.get(&Yaml::String("umask".to_string())) {
+        Some(&Yaml::String(ref a)) => match u32::from_str_radix(&a, 8) {
+            Ok(b) => Mode::from(b),
+            Err(e) => {
+                error!("Eror parsing umask for {},{}:{}", prog_name, &a, e);
+                Mode::from(0o755)
+            }
+        },
+        Some(&Yaml::Integer(a)) => match i64::from_str_radix(&i64::to_string(&a), 8) {
+            Ok(b) => Mode::from(b as u32),
+            Err(e) => {
+                error!("Eror parsing umask for {},{}:{}", prog_name, &a, e);
+                Mode::from(0o755)
+            }
+        },
+        _ => {
+            info!("Umask is not set. Using default 755");
+            Mode::from(0o755)
+        }
+    }
 }
 
 pub fn read_config(config_path: &Path) -> Vec<Task> {

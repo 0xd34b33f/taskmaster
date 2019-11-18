@@ -2,7 +2,7 @@ use crate::config_reader::{read_config, Task};
 use signal::Signal;
 use std::collections::HashMap;
 use std::path::PathBuf;
-
+use umask::*;
 #[test]
 pub fn normal_config() {
     let path = std::env::current_exe().unwrap();
@@ -18,7 +18,7 @@ pub fn normal_config() {
                 program_name: String::from("nginx"),
                 program_path: String::from("/usr/local/bin/nginx -c /etc/nginx/test.conf"),
                 numprocs: 1,
-                umask: 22,
+                umask: Mode::from(0o22),
                 woking_dir: std::path::PathBuf::from("/tmp"),
                 autostart: true,
                 autorestart: false,
@@ -35,7 +35,7 @@ pub fn normal_config() {
                 program_name: String::from("vogsphere"),
                 program_path: String::from("/usr/local/bin/vogsphere-worker --no-prefork"),
                 numprocs: 8,
-                umask: 77,
+                umask: Mode::from(0o077),
                 woking_dir: PathBuf::from("/tmp"),
                 autostart: true,
                 autorestart: false,
