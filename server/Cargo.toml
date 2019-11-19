@@ -15,4 +15,4 @@ log = "0.4"
 fern = { version = "0.5", features = ["colored"] }
 chrono = "0.4"
 clap = "2.33.0"
-umask = {git = "https://github.com/0xd34b33f/umask"}
+umask = "0.1"
