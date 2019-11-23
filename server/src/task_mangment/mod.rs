@@ -2,14 +2,18 @@ use crate::config_reader::{read_config, Task};
 use log::{debug, error, info, trace, warn};
 use nix::sys::stat::{umask, Mode};
 use std::io;
-use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{Stdio, ExitStatus};
+use tokio::prelude::*;
+use tokio::timer;
+use tokio_process::{Command, Child};
+use futures::Future;
+
 #[derive(Debug)]
 struct TaskProps {
     task_info: Task,
     prototype: Command,
-    running_copies: Vec<Child>,
+    running_copies:  Future <Vec< Result<ExitStatus, std::io::Error>>>,
 }
 
 fn create_process_prototype(task: Task) -> Command {
@@ -21,27 +25,30 @@ fn create_process_prototype(task: Task) -> Command {
         .stdout(output_builder(&task.stdout, &task.program_name))
         .stderr(output_builder(&task.stderr, &task.program_name))
         .current_dir(&task.woking_dir);
-    unsafe {
-        program_prototype.pre_exec(|| {
-            umask(Mode::empty());
-            Ok(())
-        });
-    };
 
     info!("Created prototype for {}", task.program_name);
     program_prototype
 }
 
-fn spawn_process(props: &mut TaskProps) -> Vec<io::Result<Child>> {
+async fn spawn_process(props: &mut TaskProps) -> Vec<Result<ExitStatus, std::io::Error>> {
     let mut spawn_results = vec![];
     while props.task_info.numprocs != 0 {
-        spawn_results.push(props.prototype.spawn());
+         match props.prototype.status(){
+            Ok(a)=>{
+                spawn_results.push(a.await);
+            },
+            Err(e)=>{
+                error!("Error spawning  {} : {}", &props.task_info.program_name, e);
+            }
+        };
         props.task_info.numprocs -= 1;
     }
     spawn_results
 }
 
-fn watch_tasks(tasks: Vec<TaskProps>) {}
+fn watch_tasks(tasks: Vec<TaskProps>) {
+
+}
 
 pub fn mange_tasks(config_path: PathBuf) {
     let mut tasks_props = Vec::<TaskProps>::new();
@@ -51,16 +58,8 @@ pub fn mange_tasks(config_path: PathBuf) {
             prototype: create_process_prototype(task),
             running_copies: vec![],
         });
-    }
-    for task in tasks_props.iter_mut() {
-        let process = spawn_process(task);
-        for proc in process {
-            match proc {
-                Ok(a) => task.running_copies.push(a),
-                Err(e) => {
-                    error!("Failed starting {} : {}", task.task_info.program_name, e);
-                }
-            }
+        for mut task in tasks_props{
+            dbg!( spawn_process(&mut task));
         }
     }
     dbg!(tasks_props);
@@ -111,14 +110,17 @@ fn output_builder(out: &Option<PathBuf>, name: &str) -> Stdio {
 pub mod tests {
     use crate::task_mangment::mange_tasks;
     use std::process::Command;
-
     #[test]
     pub fn spawn_check() {
         let path = std::env::current_exe().unwrap();
         let root_path = path.ancestors().nth(4).unwrap();
         mange_tasks(root_path.join("server/src/config_reader/test_data/test.yaml"));
         let output = Command::new("/bin/ls").arg("-la").output().unwrap();
-        let test_read = std::fs::read("/tmp/out").unwrap();
+        let output_path = "/tmp/out";
+        let test_read = std::fs::read(output_path).unwrap();
+        if std::path::Path::new(&output_path).exists() {
+            std::fs::remove_file(&std::path::Path::new(&output_path)).expect("Temporary output file is not deleted");
+        }
         assert_eq!(output.stdout, test_read);
     }
 }

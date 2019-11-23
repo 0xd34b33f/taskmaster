@@ -16,4 +16,6 @@ fern = { version = "0.5", features = ["colored"] }
 chrono = "0.4"
 clap = "2.33.0"
 umask = "0.1"
-tokio = "0.1.22"
+tokio = "0.2.0-alpha.2"
+tokio-process = "0.3.0-alpha.2"
+futures = "0.3.0"
