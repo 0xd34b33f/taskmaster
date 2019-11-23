@@ -5,10 +5,11 @@ use std::io;
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-
+#[derive(Debug)]
 struct TaskProps {
     task_info: Task,
     prototype: Command,
+    running_copies: Vec<Child>,
 }
 
 fn create_process_prototype(task: Task) -> Command {
@@ -40,25 +41,29 @@ fn spawn_process(props: &mut TaskProps) -> Vec<io::Result<Child>> {
     spawn_results
 }
 
+fn watch_tasks(tasks: Vec<TaskProps>) {}
+
 pub fn mange_tasks(config_path: PathBuf) {
     let mut tasks_props = Vec::<TaskProps>::new();
     for task in read_config(&config_path) {
         tasks_props.push(TaskProps {
             task_info: task.clone(),
             prototype: create_process_prototype(task),
+            running_copies: vec![],
         });
     }
-    let mut task_states = vec![];
-    for mut task in tasks_props {
-        for proc in spawn_process(&mut task) {
+    for task in tasks_props.iter_mut() {
+        let process = spawn_process(task);
+        for proc in process {
             match proc {
-                Ok(a) => task_states.push(a),
+                Ok(a) => task.running_copies.push(a),
                 Err(e) => {
                     error!("Failed starting {} : {}", task.task_info.program_name, e);
                 }
             }
         }
     }
+    dbg!(tasks_props);
 }
 
 #[cfg(debug_assertions)]
